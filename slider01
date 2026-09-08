@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Before / After Slider</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #202124;
+      font-family: Arial, sans-serif;
+    }
+    .ba-slider {
+      position: relative;
+      width: min(1080px, 100vw);
+      aspect-ratio: 1;
+      overflow: hidden;
+      user-select: none;
+      touch-action: none;
+      background: transparent;
+    }
+    .ba-slider img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .ba-before { clip-path: inset(0 49% 0 0); }
+    .ba-line {
+      position: absolute;
+      top: 0;
+      left: calc(51% - 1px);
+      width: 2px;
+      height: 100%;
+      background: #fff;
+      z-index: 5;
+      pointer-events: none;
+    }
+    .ba-handle {
+      position: absolute;
+      top: 50%;
+      left: 51%;
+      width: 48px;
+      height: 48px;
+      transform: translate(-50%, -50%);
+      cursor: ew-resize;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 10px rgba(0,0,0,.28);
+    }
+    .ba-handle svg { pointer-events: none; }
+    .ba-label {
+      position: absolute;
+      top: calc(var(--image-top, 0px) + 12px);
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.65);
+      color: #fff;
+      font-size: clamp(14px, 2.2vw, 24px);
+      font-weight: 700;
+      z-index: 30;
+      pointer-events: none;
+    }
+    .ba-label-before { left: calc(var(--image-left, 0px) + 12px); }
+    .ba-label-after {
+      right: auto;
+      left: calc(var(--image-left, 0px) + var(--image-width, 100%) - 12px);
+      transform: translateX(-100%);
+    }
+  </style>
+</head>
+<body>
+  <div class="ba-slider" aria-label="Before and after image comparison">
+    <!-- Replace these with local paths, for example images/before.jpg and images/after.jpg -->
+    <img class="ba-after" src="images/after.png" alt="After">
+    <img class="ba-before" src="images/before.png" alt="Before">
+    <div class="ba-line"></div>
+    <div class="ba-handle" role="slider" aria-label="Comparison position" tabindex="0">
+      <svg width="20" height="16" viewBox="0 0 20 16" fill="none" aria-hidden="true">
+        <path d="M6 2L2 8l4 6M14 2l4 6-4 6" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="10" y1="1" x2="10" y2="15" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="ba-label ba-label-before">BEFORE</div>
+    <div class="ba-label ba-label-after">AFTER</div>
+  </div>
+
+  <script>
+    (() => {
+      const slider = document.querySelector('.ba-slider');
+      const before = slider.querySelector('.ba-before');
+      const after = slider.querySelector('.ba-after');
+      const handle = slider.querySelector('.ba-handle');
+      const line = slider.querySelector('.ba-line');
+      let position = 51;
+
+      function positionLabels() {
+        const rect = slider.getBoundingClientRect();
+        const ratio = (after.naturalWidth && after.naturalHeight)
+          ? after.naturalWidth / after.naturalHeight
+          : 1;
+        const fittedWidth = Math.min(rect.width, rect.height * ratio);
+        const fittedHeight = Math.min(rect.height, rect.width / ratio);
+        const left = (rect.width - fittedWidth) / 2;
+        const top = (rect.height - fittedHeight) / 2;
+        slider.style.setProperty('--image-left', `${left}px`);
+        slider.style.setProperty('--image-top', `${top}px`);
+        slider.style.setProperty('--image-width', `${fittedWidth}px`);
+      }
+
+      function fitSliderToImage() {
+        if (after.naturalWidth && after.naturalHeight) {
+          slider.style.aspectRatio = `${after.naturalWidth} / ${after.naturalHeight}`;
+          positionLabels();
+        }
+      }
+
+      function update(value) {
+        position = Math.max(0, Math.min(100, value));
+        before.style.clipPath = `inset(0 ${100 - position}% 0 0)`;
+        handle.style.left = `${position}%`;
+        line.style.left = `calc(${position}% - 1px)`;
+        handle.setAttribute('aria-valuenow', Math.round(position));
+      }
+
+      function setFromPointer(event) {
+        const rect = slider.getBoundingClientRect();
+        update(((event.clientX - rect.left) / rect.width) * 100);
+      }
+
+      slider.addEventListener('pointerdown', event => {
+        slider.setPointerCapture(event.pointerId);
+        setFromPointer(event);
+      });
+      slider.addEventListener('pointermove', event => {
+        if (event.buttons) setFromPointer(event);
+      });
+      handle.addEventListener('keydown', event => {
+        if (event.key === 'ArrowLeft') { update(position - 1); event.preventDefault(); }
+        if (event.key === 'ArrowRight') { update(position + 1); event.preventDefault(); }
+      });
+      after.addEventListener('load', fitSliderToImage);
+      window.addEventListener('resize', positionLabels);
+      fitSliderToImage();
+      update(position);
+    })();
+  </script>
+</body>
+</html>
